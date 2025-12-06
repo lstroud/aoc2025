@@ -1,13 +1,25 @@
+"""
+Advent of Code 2025 - Day 1: Circular Dial Navigation
+
+Problem: Track a dial rotating left (L) or right (R) on a circular range.
+Count how many times the dial crosses or lands on position 0.
+"""
 import numpy as np
 from pathlib import Path
 from rich.console import Console
-from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
-from rich.layout import Layout
+
 
 class RotationList:
-    def __init__(self, rotations:list[str], start_position: int, circular_range: int):
+    """
+    Tracks rotations on a circular dial and counts zero crossings.
+
+    The dial starts at a given position and rotates based on instructions
+    like "L5" (left 5) or "R10" (right 10). Positions wrap around the
+    circular range (e.g., 0-99 for range=100).
+    """
+
+    def __init__(self, rotations: list[str], start_position: int, circular_range: int):
         self.start_position = start_position
         self.circular_range = circular_range
         self.signed_rotations = self._convert_to_signed_array(rotations)
@@ -72,7 +84,7 @@ class RotationList:
         
         console.print(table)
 
-    def _convert_to_signed_array(self, rotations:list[str]) -> np.ndarray:
+    def _convert_to_signed_array(self, rotations: list[str]) -> np.ndarray:
         instructions = np.array(rotations)
         directions = np.array([x[0] for x in instructions])
         values = np.array([int(x[1:]) for x in instructions])
@@ -82,11 +94,10 @@ class RotationList:
         result = signs * values
         return result
     
-console = Console()
-instructions = RotationList.parse_file('./data.dat')
-if len(instructions) > 0:
-    rotationList = RotationList(instructions, start_position=50, circular_range=100)
-    positions = rotationList.get_positions()
-    # print(positions)
-    rotationList.display_results(positions, console=console)
-    # rotationList.display_journey(positions, console)
+if __name__ == "__main__":
+    console = Console()
+    instructions = RotationList.parse_file('./data.dat')
+    if len(instructions) > 0:
+        rotation_list = RotationList(instructions, start_position=50, circular_range=100)
+        positions = rotation_list.get_positions()
+        rotation_list.display_results(positions, console=console)
