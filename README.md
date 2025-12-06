@@ -16,7 +16,7 @@ Track a dial rotating left/right on a circular range and count zero crossings.
 ### Day 2: Repeating Pattern Detection
 Find IDs in ranges where digits form repeating patterns.
 
-**Part 1:** First half equals second half (e.g., `1212` ’ `12 == 12`)
+**Part 1:** First half equals second half (e.g., `1212` ï¿½ `12 == 12`)
 **Part 2:** Any repeating pattern using regex `^(.+)\1+$` (e.g., `123123`, `1111`)
 
 [day2/puzzle21.py](day2/puzzle21.py) | [day2/puzzle22.py](day2/puzzle22.py)
@@ -46,7 +46,7 @@ Find items in a grid that aren't fully surrounded (accessible from edges).
 Find values that fall within any of many intervals, and count total coverage.
 
 **Approach:** Strategy pattern comparing 5 algorithms:
-- **Broadcasting** - O(n×m) matrix, simple but memory-heavy
+- **Broadcasting** - O(nï¿½m) matrix, simple but memory-heavy
 - **Interval Tree** - O(log m) queries via balanced tree
 - **Sweep Line** - O((n+m) log(n+m)) event-based processing
 - **Pandas IntervalIndex** - Native pandas binary search
@@ -55,3 +55,16 @@ Find values that fall within any of many intervals, and count total coverage.
 Includes benchmarking to show crossover points where different strategies win.
 
 [day5/puzzle52.py](day5/puzzle52.py) | [day5/strategies/](day5/strategies/)
+
+---
+
+### Day 6: Vertical Digit Pivot
+Parse column-aligned data where whitespace encodes digit positions. Numbers are right-aligned within logical columns; read vertically (right-to-left), apply operators (* or +), sum results.
+
+**Part 2:** Preserves whitespace with raw file parsing into numpy char grid. Compares loop vs vectorized implementations:
+- **Loop** - Iterate columns, filter spaces, join digits
+- **Vectorized** - `view(np.uint32)` for char-to-int, cumsum from bottom for place values, 23Ã— faster but 7Ã— more memory
+
+Includes benchmark with correctness verification.
+
+[day6/puzzle62.py](day6/puzzle62.py)
