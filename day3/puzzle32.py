@@ -1,14 +1,13 @@
-"""
-Advent of Code 2025 - Day 3, Part 2: Largest N-Digit Selection
+"""Largest N-digit selection: greedy argmax vs monotonic stack.
 
-Problem: From each number, select 12 digits (in order) that form the
-largest possible 12-digit number. Sum all results.
+Select 12 digits (in order) forming the largest possible number.
 
-This file demonstrates two approaches:
-1. Greedy argmax: At each step, pick the largest digit that leaves enough remaining
-2. Monotonic stack: Remove smallest digits until we have exactly N left
+Two O(n) approaches with different constant factors:
+1. Greedy argmax - pick largest digit that leaves enough remaining
+2. Monotonic stack - pop smaller digits when bigger ones arrive
 
-Both have O(n) complexity but different constant factors.
+The stack wins. There's something deeply satisfying about a monotonic
+stack solution - it's like the algorithm knows what it's doing.
 """
 from pathlib import Path
 import time

@@ -1,16 +1,10 @@
-"""
-Advent of Code 2025 - Day 2, Part 2: Repeating Pattern Detection
+"""Repeating pattern detection using regex backreferences.
 
-Problem: Given ranges of IDs, find IDs that consist entirely of a
-repeating pattern (any length).
+Find IDs made entirely of a repeating pattern (any length).
+Examples: 1111 ("1"×4), 123123 ("123"×2), 121212 ("12"×3)
 
-Examples:
-  - 1111 matches: "1" repeated 4 times
-  - 123123 matches: "123" repeated 2 times
-  - 121212 matches: "12" repeated 3 times
-  - 12321 does NOT match: no repeating pattern
-
-Regex: ^(.+)\\1+$ captures any prefix that repeats to fill the string.
+The regex ^(.+)\\1+$ is elegant: capture any prefix, require it to
+repeat at least once to fill the string. Backreferences do the work.
 """
 from pathlib import Path
 import pandas as pd
@@ -20,7 +14,15 @@ REPEATING_PATTERN = r'^(.+)\1+$'
 
 
 def parse_file(file_path: str) -> pd.DataFrame:
-    """Load ID ranges from CSV file."""
+    """
+    Load ID ranges from CSV file.
+
+    Args:
+        file_path: Path to CSV (relative to this module)
+
+    Returns:
+        DataFrame with range strings
+    """
     current_dir = Path(__file__).parent
     full_path = current_dir / file_path
     return pd.read_csv(full_path, header=None)

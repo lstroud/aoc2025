@@ -1,14 +1,11 @@
-"""
-Advent of Code 2025 - Day 3, Part 1: Largest Two-Digit Selection
+"""Largest two-digit selection using cummax from the right.
 
-Problem: From each number, select two digits (in order, not necessarily
-adjacent) that form the largest possible two-digit number. Sum all results.
+Select two digits (in order) to form the largest possible number.
+Example: "9512" → can form 95, 91, 92, 51, 52, 12 → max is 95
 
-Example: From "9512" we can form: 95, 91, 92, 51, 52, 12 → max is 95
-
-Algorithm: For each position, the best choice is that digit followed by
-the maximum digit that appears after it. We use cummax from the right
-to find the max digit after each position in O(n).
+The cummax trick: reverse the series, cummax gives running max,
+reverse back → now max_after[i] = max of all digits after position i.
+This turns O(n²) brute force into O(n). Pandas makes it almost trivial.
 """
 from pathlib import Path
 import pandas as pd

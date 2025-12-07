@@ -1,11 +1,7 @@
-"""
-Wave Picking Simulation for Warehouse Inventory
+"""Wave picking simulation using 2D convolution for neighbor counting.
 
-Simulates the process of picking items from a warehouse grid where items can only
-be accessed if they have fewer than a threshold number of neighbors. Each wave
-picks all currently accessible items, which may expose new items for subsequent waves.
-
-Uses 2D convolution to efficiently calculate neighbor counts across the entire grid.
+Each wave picks items with <4 neighbors. Like Tetris in reverse - clear
+the edges first, work your way in. Scipy does the heavy lifting.
 """
 
 from dataclasses import dataclass
@@ -21,13 +17,16 @@ from rich.panel import Panel
 from rich.console import Group
 
 
-# Constants
-ACCESSIBILITY_THRESHOLD = 4  # Items with fewer than this many neighbors are accessible
+# Items with <4 neighbors are reachable. The warehouse elves hate crowds.
+ACCESSIBILITY_THRESHOLD = 4
+
+# 8-directional neighbor kernel - the 0 in the center means "don't count yourself"
+# Convolve this bad boy and you've got neighbor counts for the whole grid
 NEIGHBOR_KERNEL = np.array([
     [1, 1, 1],
     [1, 0, 1],
     [1, 1, 1]
-])  # 8-directional neighbor kernel for convolution
+])
 
 GRID_CELL_STYLES = {
     "x": "green",   # Picked items
@@ -37,20 +36,17 @@ GRID_CELL_STYLES = {
 
 @dataclass
 class WavePickResult:
-    """Result of a single wave pick operation."""
     items_picked_count: int
     picked_mask: np.ndarray
     updated_grid: np.ndarray
 
 class DisplayVerbosity(Enum):
-    """Controls how much output is displayed during simulation."""
-    FULL = "full"         # Header + all wave panels + final result
-    BOOKENDS = "bookends" # Header + first/last wave panels + summary
-    SUMMARY = "summary"   # Header + summary panel only
+    FULL = "full"         # Every wave
+    BOOKENDS = "bookends" # First + last wave
+    SUMMARY = "summary"   # Just the numbers
 
 @dataclass
 class WaveDisplayData:
-    """Data needed to display a wave result after simulation completes."""
     wave_number: int
     items_picked_count: int
     remaining_accessible_count: int
@@ -59,94 +55,81 @@ class WaveDisplayData:
 
 @dataclass
 class SimulationResult:
-    """Complete results from running a wave picking simulation."""
     total_items_picked: int
     wave_picks: list[int]
     wave_data: list[WaveDisplayData]
 
 def load_inventory_grid(file_path: str) -> np.ndarray:
     """
-    Load warehouse inventory from file as a binary grid.
-
-    Reads the layout file and converts '@' characters to 1 (item present)
-    and all other characters to 0 (empty position).
+    Load warehouse layout. '@' = item, everything else = empty.
 
     Args:
-        file_path: Path to the inventory data file (relative to this module)
+        file_path: Path to layout file (relative to this module)
 
     Returns:
-        Binary numpy array where 1 = item present, 0 = empty
+        Binary grid where 1 = item, 0 = empty
     """
     current_dir = Path(__file__).parent
     full_path = current_dir / file_path
     df = pd.read_csv(full_path, header=None)
     grid = df[0].apply(list).to_list()
     grid = np.array(grid)
-    binary_grid = (grid == '@').astype(int)
-    return binary_grid
+    return (grid == '@').astype(int)
 
 def calculate_accessible_positions(grid: np.ndarray) -> np.ndarray:
     """
-    Calculate which positions in the grid are currently accessible for picking.
-
-    A position is accessible if it contains an item and has fewer than
-    ACCESSIBILITY_THRESHOLD neighbors.
+    Find items the elves can reach - fewer than 4 neighbors means accessible.
 
     Args:
-        grid: Binary grid where 1 = item present, 0 = empty
+        grid: Binary grid (1 = item, 0 = empty)
 
     Returns:
-        Boolean mask where True = position is accessible
+        Boolean mask where True = reachable this wave
     """
+    # Convolve once, get neighbor counts everywhere. No loops needed.
     neighbor_counts = convolve(grid, NEIGHBOR_KERNEL, mode='constant', cval=0)
-    is_accessible = (grid == 1) & (neighbor_counts < ACCESSIBILITY_THRESHOLD)
-    return is_accessible
+    return (grid == 1) & (neighbor_counts < ACCESSIBILITY_THRESHOLD)
 
 def render_grid_rows(picked_mask: np.ndarray, grid_before_pick: np.ndarray) -> list[Text]:
     """
-    Convert grid state to styled Text rows for Rich console display.
+    Turn grid state into pretty colored output.
 
     Args:
-        picked_mask: Boolean mask where True = item was picked this wave
-        grid_before_pick: Grid state before picking (1 = item, 0 = empty)
+        picked_mask: Where we grabbed items this wave
+        grid_before_pick: Grid state before picking
 
     Returns:
-        List of Rich Text objects, one per row, with color-coded characters
+        Rich Text rows ready for display
     """
     display_grid = np.where(picked_mask, 'x', np.where(grid_before_pick == 1, '@', '.'))
     styled_rows = []
     for row in display_grid:
         row_text = Text()
         for cell_char in row:
-            cell_style = GRID_CELL_STYLES.get(cell_char, "")
-            row_text.append(cell_char, style=cell_style)
+            row_text.append(cell_char, style=GRID_CELL_STYLES.get(cell_char, ""))
         styled_rows.append(row_text)
     return styled_rows
 
-def display_wave_result(console: Console,
-                        wave_number: int,
-                        items_picked_count: int,
-                        remaining_accessible_count: int,
-                        picked_mask: np.ndarray,
+def display_wave_result(console: Console, wave_number: int, items_picked_count: int,
+                        remaining_accessible_count: int, picked_mask: np.ndarray,
                         grid_before_pick: np.ndarray):
     """
-    Display the results of a single wave pick operation.
+    Show what happened in a single wave - grid state plus stats.
 
     Args:
         console: Rich console for output
-        wave_number: Current wave number (1-indexed)
-        items_picked_count: Number of items picked in this wave
-        remaining_accessible_count: Number of items accessible for next wave
-        picked_mask: Boolean mask of items picked this wave
-        grid_before_pick: Grid state before this wave's picks
+        wave_number: Which wave (1-indexed)
+        items_picked_count: Items grabbed this wave
+        remaining_accessible_count: What's exposed for next wave
+        picked_mask: Where we picked
+        grid_before_pick: Grid state before picking
     """
     styled_rows = render_grid_rows(picked_mask, grid_before_pick)
     console.print(
         Padding(
             Panel(Group(*styled_rows,
                         Text(f"\nPicked     : {items_picked_count}\n", style="yellow"),
-                        Text(f"Accessible : {remaining_accessible_count}\n", style="cyan")
-                        ),
+                        Text(f"Accessible : {remaining_accessible_count}\n", style="cyan")),
                   title=f"Wave #{wave_number}",
                   border_style="blue",
                   expand=False,
@@ -158,46 +141,40 @@ def display_wave_result(console: Console,
 
 def perform_wave_pick(current_grid: np.ndarray) -> WavePickResult:
     """
-    Execute a single wave of picking accessible items from the grid.
+    Execute a single wave pick using convolution for neighbor counting.
 
-    Identifies all currently accessible positions and removes them from the grid.
-    An item is accessible if it has fewer than ACCESSIBILITY_THRESHOLD neighbors.
+    Items are accessible if they have fewer than ACCESSIBILITY_THRESHOLD neighbors.
+    Like peeling an onion - we clear the exposed edges each wave.
 
     Args:
-        current_grid: Binary grid where 1 = item present, 0 = empty
+        current_grid: Binary grid (1 = item, 0 = empty)
 
     Returns:
-        WavePickResult containing items picked count, picked mask, and updated grid
+        WavePickResult with count, picked mask, and updated grid
     """
     neighbor_counts = convolve(current_grid, NEIGHBOR_KERNEL, mode='constant', cval=0)
     is_accessible = (current_grid == 1) & (neighbor_counts < ACCESSIBILITY_THRESHOLD)
 
     if is_accessible.sum() == 0:
-        return WavePickResult(
-            items_picked_count=0,
-            picked_mask=np.zeros_like(current_grid, dtype=bool),
-            updated_grid=current_grid
-        )
+        return WavePickResult(0, np.zeros_like(current_grid, dtype=bool), current_grid)
 
-    items_picked_count = is_accessible.sum()
+    # Yoink! Remove picked items from the grid
     updated_grid = current_grid * ~is_accessible
-    picked_mask = current_grid & ~updated_grid
-
     return WavePickResult(
-        items_picked_count=items_picked_count,
-        picked_mask=picked_mask,
+        items_picked_count=is_accessible.sum(),
+        picked_mask=current_grid & ~updated_grid,
         updated_grid=updated_grid
     )
 
 def execute_simulation(file_path: str) -> SimulationResult:
     """
-    Execute the wave picking simulation without any display output.
+    Run the wave picking simulation until the warehouse is empty.
 
     Args:
-        file_path: Path to the inventory data file
+        file_path: Path to inventory layout file
 
     Returns:
-        SimulationResult containing all simulation data
+        SimulationResult with totals and per-wave data
     """
     inventory_grid = load_inventory_grid(file_path)
     total_items_picked = 0
@@ -205,6 +182,7 @@ def execute_simulation(file_path: str) -> SimulationResult:
     wave_picks: list[int] = []
     wave_data: list[WaveDisplayData] = []
 
+    # Keep picking waves until nothing's reachable anymore
     while True:
         result = perform_wave_pick(inventory_grid)
         total_items_picked += result.items_picked_count
@@ -227,31 +205,22 @@ def execute_simulation(file_path: str) -> SimulationResult:
         inventory_grid = result.updated_grid
         wave_number += 1
 
-    return SimulationResult(
-        total_items_picked=total_items_picked,
-        wave_picks=wave_picks,
-        wave_data=wave_data
-    )
+    return SimulationResult(total_items_picked, wave_picks, wave_data)
 
-def display_summary_panel(console: Console,
-                          wave_picks: list[int],
-                          total_items_picked: int):
+def display_summary_panel(console: Console, wave_picks: list[int], total_items_picked: int):
     """
-    Display a compact summary panel of the simulation results.
+    Show the final scorecard.
 
     Args:
         console: Rich console for output
-        wave_picks: List of items picked per wave
-        total_items_picked: Total items picked across all waves
+        wave_picks: Items picked each wave
+        total_items_picked: Grand total
     """
-    wave_count = len(wave_picks)
-    picks_formatted = ", ".join(str(p) for p in wave_picks)
-
     console.print(Padding(
         Panel(
             Group(
-                Text(f"Waves          : {wave_count}\n", style="cyan"),
-                Text(f"Picks per wave : {picks_formatted}\n", style="yellow"),
+                Text(f"Waves          : {len(wave_picks)}\n", style="cyan"),
+                Text(f"Picks per wave : {', '.join(str(p) for p in wave_picks)}\n", style="yellow"),
                 Text(f"Total picked   : {total_items_picked}\n", style="bold red")
             ),
             title="Summary",
@@ -262,25 +231,22 @@ def display_summary_panel(console: Console,
         (0, 0, 0, 4)
     ))
 
-def display_simulation_results(console: Console,
-                               verbosity: DisplayVerbosity,
+def display_simulation_results(console: Console, verbosity: DisplayVerbosity,
                                result: SimulationResult):
     """
-    Display simulation results based on verbosity level.
+    Show simulation results at the requested detail level.
 
     Args:
         console: Rich console for output
-        verbosity: Controls output detail level
+        verbosity: FULL = every wave, BOOKENDS = first/last, SUMMARY = just totals
         result: Complete simulation results
     """
     console.print(Padding("\n[bold]Puzzle Summary[/bold]", (0, 0, 1, 4)))
 
     if verbosity == DisplayVerbosity.FULL:
         for wave in result.wave_data:
-            display_wave_result(console, wave.wave_number,
-                                wave.items_picked_count,
-                                wave.remaining_accessible_count,
-                                wave.picked_mask,
+            display_wave_result(console, wave.wave_number, wave.items_picked_count,
+                                wave.remaining_accessible_count, wave.picked_mask,
                                 wave.grid_before_pick)
         console.print(Padding(
             f"[bold red]Total Picked[/bold red]: {result.total_items_picked}\n",
@@ -289,16 +255,12 @@ def display_simulation_results(console: Console,
     elif verbosity == DisplayVerbosity.BOOKENDS and len(result.wave_data) > 0:
         first_wave = result.wave_data[0]
         last_wave = result.wave_data[-1]
-        display_wave_result(console, first_wave.wave_number,
-                            first_wave.items_picked_count,
-                            first_wave.remaining_accessible_count,
-                            first_wave.picked_mask,
+        display_wave_result(console, first_wave.wave_number, first_wave.items_picked_count,
+                            first_wave.remaining_accessible_count, first_wave.picked_mask,
                             first_wave.grid_before_pick)
         if last_wave.wave_number != first_wave.wave_number:
-            display_wave_result(console, last_wave.wave_number,
-                                last_wave.items_picked_count,
-                                last_wave.remaining_accessible_count,
-                                last_wave.picked_mask,
+            display_wave_result(console, last_wave.wave_number, last_wave.items_picked_count,
+                                last_wave.remaining_accessible_count, last_wave.picked_mask,
                                 last_wave.grid_before_pick)
         display_summary_panel(console, result.wave_picks, result.total_items_picked)
     else:

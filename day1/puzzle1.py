@@ -1,8 +1,7 @@
-"""
-Advent of Code 2025 - Day 1: Circular Dial Navigation
+"""Circular dial navigation using modular arithmetic.
 
-Problem: Track a dial rotating left (L) or right (R) on a circular range.
-Count how many times the dial crosses or lands on position 0.
+Track rotations on a circular dial (0-99). Count zero crossings without
+iterating by exploiting Python's floor division behavior.
 """
 import numpy as np
 from pathlib import Path
@@ -12,11 +11,12 @@ from rich.table import Table
 
 class RotationList:
     """
-    Tracks rotations on a circular dial and counts zero crossings.
+    Tracks rotations on a circular dial using vectorized numpy operations.
 
-    The dial starts at a given position and rotates based on instructions
-    like "L5" (left 5) or "R10" (right 10). Positions wrap around the
-    circular range (e.g., 0-99 for range=100).
+    Args:
+        rotations: List of instructions like "L5" (left 5) or "R10" (right 10)
+        start_position: Where the dial starts
+        circular_range: Dial wraps at this value (e.g., 100 for 0-99)
     """
 
     def __init__(self, rotations: list[str], start_position: int, circular_range: int):
@@ -38,7 +38,12 @@ class RotationList:
         return positions.astype(int)
     
     def count_zero_crossings(self) -> int:
-        """Count how many times the dial points at 0 (landing or passing through)"""
+        """
+        Count zero crossings using floor division trick.
+
+        Returns:
+            Number of times dial crosses or lands on zero
+        """
         cumsum = self.start_position + np.cumsum(self.signed_rotations)
         cumsum_with_start = np.concatenate([[self.start_position], cumsum])
 
@@ -46,9 +51,9 @@ class RotationList:
         B = cumsum_with_start[1:]
         r = self.circular_range
 
-        # // in python floors towards negative infinity
-        # Rightward: floor(B/r) - floor(A/r)
-        # Leftward: ceil(A/r) - ceil(B/r) = (-B)//r - (-A)//r
+        # The trick: Python's // floors toward negative infinity, not zero.
+        # So floor(B/r) - floor(A/r) counts how many multiples of r we crossed.
+        # For leftward moves, we flip signs to handle negative direction.
         crossings = np.where(
             self.signed_rotations >= 0,
             B // r - A // r,
