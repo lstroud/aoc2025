@@ -87,16 +87,14 @@ Tried three ways to model this:
 ---
 
 ### Day 8: Junction Box Circuits
-3D coordinates of junction boxes. Connect the 1000 closest pairs. Count how many end up in the same circuit.
+Someone let the elves do electrical work unsupervised. Connected components ensue.
 
-Tried a couple of different approaches:
-- **Hierarchical Clustering** - `scipy.cluster.hierarchy.linkage` with single-linkage. Cut the dendrogram at n-k clusters. This is literally the puzzle restated.
-- **Union-Find** - Sort all pairs by distance, union the closest k. The classic.
-- **Sparse Graph** - Build CSR adjacency matrix, run `connected_components`. BFS does the walking.
-- **KD-Tree** - `query_pairs` finds pairs within threshold. Same O(n²) bottleneck—you need pdist to find the threshold anyway.
+Tried a few approaches:
+- **Hierarchical Clustering** - Single-linkage is just Union-Find with a PhD and better marketing. Cleanest solution.
+- **Union-Find** - Sort pairs by distance, union the closest k. The classic for a reason.
+- **Sparse Graph** - Build CSR adjacency, run `connected_components`. BFS does the walking.
+- **KD-Tree** - `query_pairs` finds pairs within threshold. Still O(n²)—you need pdist to find the threshold anyway.
 
-Hierarchical is cleanest. KDTree and Sparse Graph were significantly faster.
-
-Also decided to try constraining the problem further to minimize the wire used with  Compared greedy "k closest pairs" against MST-based wiring. MST saves 15-20% wire for the same circuit count. Greedy optimizes locally; MST optimizes globally.
+Extended the puzzle: what if the elves cared about wire length? MST-based wiring saves 15-20% over greedy. Turns out "connect the closest" isn't the same as "use the least wire." Who knew graph theory would humble the elves.
 
 [day8/puzzle81.py](day8/puzzle81.py) | [day8/strategies/](day8/strategies/)
