@@ -87,14 +87,14 @@ Tried three ways to model this:
 ---
 
 ### Day 8: Junction Box Circuits
-Someone let the elves do electrical work unsupervised. Connected components ensue.
+Someone let the elves do electrical work unsupervised. They're wiring up junction boxes floating in 3D space. How do we figure out how many of their circuits we can connect with 1000 wires? 
 
 Tried a few approaches:
-- **Hierarchical Clustering** - Single-linkage is just Union-Find with a PhD and better marketing. Cleanest solution.
-- **Union-Find** - Sort pairs by distance, union the closest k. The classic for a reason.
-- **Sparse Graph** - Build CSR adjacency, run `connected_components`. BFS does the walking.
-- **KD-Tree** - `query_pairs` finds pairs within threshold. Still O(n²)—you need pdist to find the threshold anyway.
+- **Hierarchical Clustering** - Single-linkage. Cleanest solution.
+- **Union-Find** - Sort pairs by distance, union the closest k. Interesting array structure.
+- **Sparse Graph** - Build CSR adjacency, run `connected_components`. BFS does the walking. CSR is interesting.
+- **KD-Tree** - `query_pairs` finds pairs within threshold. Still constrained by the distance calc, but by far the fastest.
 
-Extended the puzzle: what if the elves cared about wire length? MST-based wiring saves 15-20% over greedy. Turns out "connect the closest" isn't the same as "use the least wire." Who knew graph theory would humble the elves.
+Extended the puzzle: what if the elves cared about wire length? MST-based wiring saves 15-20% over greedy. 
 
 [day8/puzzle81.py](day8/puzzle81.py) | [day8/strategies/](day8/strategies/)
