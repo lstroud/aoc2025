@@ -14,7 +14,7 @@ def load_tile_locations(file_path: str) -> np.ndarray:
 
 
 red_tiles = load_tile_locations('data.dat')
-# 32-bit overflows for the data
+# 32-bit overflows the data in the real puzzle input, had to use 64
 tile_cols = red_tiles[0].to_numpy(dtype='int64', copy=False)
 tile_rows = red_tiles[1].to_numpy(dtype='int64', copy=False)
 
