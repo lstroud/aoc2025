@@ -98,3 +98,19 @@ Tried a few approaches:
 Extended the puzzle: what if the elves cared about wire length? MST-based wiring saves 15-20% over greedy. 
 
 [day8/puzzle81.py](day8/puzzle81.py) | [day8/strategies/](day8/strategies/)
+
+---
+
+### Day 9: Movie Theater Carpet Fitting
+The elves are renovating a movie theater. Their floor plan winds like they were paid by the corner. Find the biggest rectangular carpet that fits inside the renovation zone, corners on red tiles.
+
+Spent too much time implementing vectorized ray casting to prove I didn't need Shapely. I needed Shapely.
+
+Tried three approaches:
+- **Shapely Contains** - `polygon.contains(box)`. Works correctly. 
+- **Rasterize + Mask** - Convert polygon to boolean grid, use `scipy.ndimage.binary_fill_holes`. Works on small data, memory-explodes when coordinate range hits 100k.
+- **Convex Hull + Ray Casting** - Prune candidates to hull vertices, vectorized point-in-polygon with numpy broadcasting. Educational but fundamentally broken for concave polygons.
+
+The hard lesson: **point sampling can't detect edge crossings**.
+
+[day9/puzzle91.py](day9/puzzle91.py) | [day9/puzzle92s.py](day9/puzzle92s.py) | [day9/strategies/](day9/strategies/)
