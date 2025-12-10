@@ -1,102 +1,161 @@
-from dataclasses import dataclass
+"""Day 10 Part 2: Factory Joltage Configuration
+
+The elves need to configure factory machines by pressing buttons to hit
+exact joltage targets. Each button increments specific counters.
+Minimize total button presses across all machines.
+
+This is Integer Linear Programming (ILP):
+- Minimize: sum of button presses
+- Subject to: button_effects @ presses = joltage_targets
+- Constraints: presses >= 0, integers only
+
+scipy.optimize.milp handles the heavy lifting. The elves' fingers thank us.
+"""
 from pathlib import Path
 import re
 import numpy as np
-from scipy.optimize import milp, LinearConstraint, Bounds, OptimizeResult
-import pandas as pd
+from scipy.optimize import milp, LinearConstraint, Bounds
 from rich.console import Console
 from rich.panel import Panel
 
-class MachineSpec:
-    MACHINE_SPEC_REGEX = re.compile(r'^\[([^\]]*)\]\s*([^{]+)(?:\{([^}]*)\})?$')
+
+class FactoryMachine:
+    """A factory machine with buttons that affect joltage counters."""
+
+    MANUAL_REGEX = re.compile(r'^\[([^\]]*)\]\s*([^{]+)(?:\{([^}]*)\})?$')
+
     @classmethod
-    def from_line(cls, line) -> MachineSpec:
-        m = cls.MACHINE_SPEC_REGEX.match(line)
-        if not m:
-            raise ValueError(f"Invalid machine spec line: {line!r}")
-        lp = m.group(1)
-        bs = m.group(2)
-        jr = m.group(3)
-        return cls(lp, bs, jr)
+    def from_manual_page(cls, line: str) -> 'FactoryMachine':
+        """Parse a line from the half-eaten manual."""
+        match = cls.MANUAL_REGEX.match(line)
+        if not match:
+            raise ValueError(f"The Shiba got this page too: {line!r}")
+        lights, buttons, joltage = match.groups()
+        return cls(lights, buttons, joltage)
 
-    def __init__(self, target_str: str, button_spec_str: str, joltage_spec_str:str):
-        self.target_light_pattern = self._parse_target_pattern(target_str)
-        self.button_specs = self._parse_button_specs(button_spec_str, len(self.target_light_pattern))
-        self.joltage_requirements = self._parse_joltage_requirements(joltage_spec_str)
+    def __init__(self, light_pattern: str, button_wiring: str, joltage_spec: str):
+        self.indicator_lights = self._parse_lights(light_pattern)
+        self.button_effects = self._parse_buttons(button_wiring, len(self.indicator_lights))
+        self.joltage_targets = self._parse_joltage(joltage_spec)
 
-    def _parse_target_pattern(self, target_str: str) -> np.ndarray:
-        # .##.
-        char_arr = np.array(list(target_str))
-        mask = (char_arr == '#')
-        return np.where(mask, 1, 0)
-    
-    def _parse_button_specs(self, spec_str: str, number_of_lights: int) -> np.ndarray:
-        return np.array([self._button_spec_to_mask(spec, number_of_lights) for spec in spec_str.split()])
-        
-    
-    def _button_spec_to_mask(self, spec_str: str, number_of_lights: int) -> np.ndarray:
-        # (0,2,3,4)
-        button_mask = np.zeros(number_of_lights, dtype=int)
-        indices = np.fromstring(spec_str.strip("()"), sep=",", dtype=int)
-        button_mask[indices] = True
-        return button_mask.astype(int)
-    
-    def _parse_joltage_requirements(self, joltage_spec: str) -> np.ndarray:
-        return np.fromstring(joltage_spec.strip("()"), sep=",", dtype=int)
-    
-    def __str__(self):
-        return self.__repr__()
-    
-    def __repr__(self):
-        return "\n".join([
-            f"\tLight Pattern: {self.target_light_pattern}\n",
-            f"\tButton Specs: \n{"".join(f"\t{i}: {np.array2string(row)}\n" for i, row in enumerate(self.button_specs))}\n",
-            f"\tJoltage Reqs: {self.joltage_requirements}\n"
-        ])
-    
-def load_panel_specification(file_name: str) -> list[MachineSpec]:
-    current_dir = Path(__file__).parent
-    full_path = current_dir / file_name
-    specs = []
-    with open(full_path) as f:
-        specs = [MachineSpec.from_line(line.strip()) for line in f]
-    return specs
+    def _parse_lights(self, pattern: str) -> np.ndarray:
+        """Parse indicator light pattern: . = off, # = on"""
+        return np.array([1 if c == '#' else 0 for c in pattern])
 
-def solve(file_name: str) -> int:
-    """Solve the puzzle for the given input file."""
-    machine_specs = load_panel_specification(file_name)
-    total_presses = 0
+    def _parse_buttons(self, wiring: str, n_counters: int) -> np.ndarray:
+        """Parse button wiring schematics into effect matrix."""
+        buttons = []
+        for spec in wiring.split():
+            effect = np.zeros(n_counters, dtype=int)
+            indices = np.fromstring(spec.strip("()"), sep=",", dtype=int)
+            effect[indices] = 1
+            buttons.append(effect)
+        return np.array(buttons)
 
-    for machine_spec in machine_specs:
-        n_buttons = machine_spec.button_specs.shape[0]
-        result: OptimizeResult = milp(np.ones(n_buttons),
-                      constraints=LinearConstraint(A=machine_spec.button_specs.T, 
-                                                   lb=machine_spec.joltage_requirements, 
-                                                   ub=machine_spec.joltage_requirements),
-                        integrality = np.ones(n_buttons),
-                        bounds = Bounds(lb=0, ub=np.inf) 
-        )
-        print(result)
-        if result.success:
-            presses = result.fun
-        else:
-            print(f"No solution found: {result.message}")
-        total_presses += presses
+    def _parse_joltage(self, spec: str) -> np.ndarray:
+        """Parse joltage requirements."""
+        return np.fromstring(spec.strip("{}"), sep=",", dtype=int)
 
-    return total_presses
+    @property
+    def n_buttons(self) -> int:
+        return self.button_effects.shape[0]
+
+    @property
+    def n_counters(self) -> int:
+        return len(self.joltage_targets)
+
+
+def load_factory_floor(file_name: str) -> list[FactoryMachine]:
+    """Load machine specs from what remains of the manual."""
+    manual_path = Path(__file__).parent / file_name
+    with open(manual_path) as f:
+        return [FactoryMachine.from_manual_page(line.strip()) for line in f]
+
+
+def calibrate_machine(machine: FactoryMachine) -> int:
+    """
+    Find minimum button presses to hit joltage targets.
+
+    ILP formulation:
+    - Variables: x[i] = times to press button i
+    - Objective: minimize sum(x)
+    - Constraint: button_effects.T @ x = joltage_targets
+    - Bounds: x >= 0, integers
+    """
+    # Objective: minimize total presses (coefficient 1 for each button)
+    finger_fatigue = np.ones(machine.n_buttons)
+
+    # Constraint: effects must sum to targets exactly
+    wiring_matrix = machine.button_effects.T  # (counters x buttons)
+    targets = machine.joltage_targets
+    joltage_constraint = LinearConstraint(wiring_matrix, targets, targets)
+
+    # Bounds: can't press negative times, no upper limit
+    press_limits = Bounds(lb=0, ub=np.inf)
+
+    # All variables must be integers (no half-presses allowed)
+    whole_presses_only = np.ones(machine.n_buttons)
+
+    result = milp(
+        finger_fatigue,
+        constraints=joltage_constraint,
+        bounds=press_limits,
+        integrality=whole_presses_only
+    )
+
+    if not result.success:
+        raise ValueError(f"Machine uncalibratable: {result.message}")
+
+    return {
+        'presses': int(result.fun),
+        'nodes': result.mip_node_count,
+        'buttons': machine.n_buttons,
+        'counters': machine.n_counters,
+    }
+
+
+def solve(file_name: str) -> dict:
+    """Configure all machines, return stats about the solve."""
+    machines = load_factory_floor(file_name)
+    results = [calibrate_machine(m) for m in machines]
+
+    press_counts = [r['presses'] for r in results]
+    total_nodes = sum(r['nodes'] for r in results)
+    total_buttons = sum(r['buttons'] for r in results)
+    total_counters = sum(r['counters'] for r in results)
+
+    return {
+        'total': sum(press_counts),
+        'machines': len(machines),
+        'buttons': total_buttons,
+        'counters': total_counters,
+        'nodes': total_nodes,
+    }
+
+
+MACHINE_ART = """\
+    [green]◉ ◉ ◉ ◉ ◉[/]     🔴🟢🟢🔴🟢   [bold cyan]3 7 4 2 5[/]
+    [dim]└──btns──┘  └──lights───┘ └joltage─┘[/]"""
 
 
 if __name__ == "__main__":
     console = Console()
 
-    # Test on sample
-    sample_result = solve('sample.dat')
-    console.print(f"Sample: {sample_result} (expected 33)")
+    stats = solve('data.dat')
 
-    # Run on real data
-    result = solve('data.dat')
+    summary = (
+        f"[bold green]{stats['total']:,}[/bold green] button presses\n\n"
+        f"{MACHINE_ART}\n\n"
+        f"[dim]Machines:[/dim] {stats['machines']:,}  "
+        f"[dim]Buttons:[/dim] {stats['buttons']:,}  "
+        f"[dim]Counters:[/dim] {stats['counters']:,}  "
+        f"[dim]ILP nodes:[/dim] {stats['nodes']:,}"
+    )
+
     console.print(Panel(
-        f"[bold green]{result}[/bold green]",
-        title="[red]Day 10 Part 2[/red]",
-        border_style="red"
+        summary,
+        title="🎄 Day 10 Part 2 🎅",
+        border_style="green",
+        expand=False,
+        padding=(1, 2)
     ))

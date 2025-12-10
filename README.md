@@ -114,3 +114,20 @@ Tried three approaches:
 The hard lesson: **point sampling can't detect edge crossings**.
 
 [day9/puzzle91.py](day9/puzzle91.py) | [day9/puzzle92.py](day9/puzzle92.py) | [day9/strategies/](day9/strategies/)
+
+---
+
+### Day 10: Factory Machine Initialization
+A Shiba Inu ate the manual. Configure factory machines by pressing buttons that affect indicator lights or joltage counters. Minimize button presses.
+
+Two completely different mathematical problems hiding behind similar inputs:
+
+**Part 1:** Buttons toggle lights (XOR). Each button pressed 0 or 1 times. This is Gaussian elimination over GF(2) - Galois Field. Gaussian elimination where `1 + 1 = 0`. Free variables? Enumerate all 2^f combinations to find minimum presses.
+- **GF(2) Gaussian Elimination** - Same algorithm you learned in linear algebra, but subtraction is addition and division is free. Implemented from scratch numpy doesn't do finite fields.
+
+**Part 2:** Buttons increment counters. Press each button any non-negative integer number of times. Now it's Integer Linear Programming - `scipy.optimize.milp` handles the branch-and-bound. The elves' fingers thank us.
+- **scipy.optimize.milp** - LP is polynomial, integers make it NP-hard. Fortunately HiGHS doesn't care about our complexity problems.
+
+The plot twist: Part 1's "simple toggle problem" required implementing Gaussian elimination with mod-2 arithmetic. Part 2's "harder integer problem" requires ILP.
+
+[day10/puzzle101.py](day10/puzzle101.py) | [day10/puzzle102.py](day10/puzzle102.py)
