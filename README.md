@@ -97,7 +97,7 @@ Tried a few approaches:
 
 Extended the puzzle: what if the elves cared about wire length? MST-based wiring saves 15-20% over greedy. 
 
-[day8/puzzle81.py](day8/puzzle81.py) | [day8/strategies/](day8/strategies/)
+[day8/puzzle81.py](day8/puzzle81.py) | [day8/puzzle82.py](day8/puzzle82.py) | [day8/strategies/](day8/strategies/)
 
 ---
 
@@ -113,4 +113,4 @@ Tried three approaches:
 
 The hard lesson: **point sampling can't detect edge crossings**.
 
-[day9/puzzle91.py](day9/puzzle91.py) | [day9/puzzle92s.py](day9/puzzle92s.py) | [day9/strategies/](day9/strategies/)
+[day9/puzzle91.py](day9/puzzle91.py) | [day9/puzzle92.py](day9/puzzle92.py) | [day9/strategies/](day9/strategies/)
