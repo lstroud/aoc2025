@@ -141,6 +141,11 @@ The toroidal reactor's wiring is a mess. Data flows through devices like gossip 
 
 **Part 2:** Count paths from `svr` to `out` that pass through both `dac` (digital-to-analog converter) AND `fft` (fast Fourier transform). Same DFS, but now we track checkpoints. Like Santa checking naughty AND nice - both boxes must be ticked.
 
-The twist: This puzzle was obsurdly easy compared to prior days
+The twist: This puzzle was absurdly easy compared to prior days.
 
-[day11/puzzle111.py](day11/puzzle111.py) | [day11/puzzle112.py](day11/puzzle112.py)
+**Bonus:** Reimplemented with linear algebra 
+- Neumann series `(I - A)⁻¹ - I` for Part 1. Really elegant, but creates the whole graph in memory.
+- The Neumann series *can* handle Part 2 checkpoints via inclusion-exclusion, but matrix inversion fails at 10¹⁷ scale due to floating point precision. Switched from vectorized (matrix inversion) to iterative (`state_vector @ A` in a loop) - same math, but exact integer arithmetic. 
+→ [day11/puzzle113.py](day11/puzzle113.py)
+
+[day11/puzzle111.py](day11/puzzle111.py) | [day11/puzzle112.py](day11/puzzle112.py) 
