@@ -131,3 +131,16 @@ Two completely different mathematical problems hiding behind similar inputs:
 The plot twist: Part 1's "simple toggle problem" required implementing Gaussian elimination with mod-2 arithmetic. Part 2's "harder integer problem" requires ILP.
 
 [day10/puzzle101.py](day10/puzzle101.py) | [day10/puzzle102.py](day10/puzzle102.py)
+
+---
+
+### Day 11: Reactor Path Counting
+The toroidal reactor's wiring is a mess. Data flows through devices like gossip through the North Pole breakroom - one direction only, but many possible paths.
+
+**Part 1:** Count all paths from `you` to `out`. Classic DFS with memoization. Each device remembers how many paths lead from it to the reactor - because asking the same elf twice is inefficient.
+
+**Part 2:** Count paths from `svr` to `out` that pass through both `dac` (digital-to-analog converter) AND `fft` (fast Fourier transform). Same DFS, but now we track checkpoints. Like Santa checking naughty AND nice - both boxes must be ticked.
+
+The twist: This puzzle was obsurdly easy compared to prior days
+
+[day11/puzzle111.py](day11/puzzle111.py) | [day11/puzzle112.py](day11/puzzle112.py)
