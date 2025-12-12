@@ -148,4 +148,48 @@ The twist: This puzzle was absurdly easy compared to prior days.
 - The Neumann series *can* handle Part 2 checkpoints via inclusion-exclusion, but matrix inversion fails at 10¹⁷ scale due to floating point precision. Switched from vectorized (matrix inversion) to iterative (`state_vector @ A` in a loop) - same math, but exact integer arithmetic. 
 → [day11/puzzle113.py](day11/puzzle113.py)
 
-[day11/puzzle111.py](day11/puzzle111.py) | [day11/puzzle112.py](day11/puzzle112.py) 
+[day11/puzzle111.py](day11/puzzle111.py) | [day11/puzzle112.py](day11/puzzle112.py)
+
+---
+
+### Day 12: Christmas Tree Farm - Present Packing
+
+The elves need to load oddly-shaped presents into bays under Christmas trees. Given polyomino shapes and bay assignments, figure out which bays can actually fit all their assigned presents.
+
+Now, let me tell you something about NP-complete problems. Sometimes you spend five hours implementing backtracking, Dancing Links, and SAT solvers - only to discover that counting cells was the answer all along. As Mark Twain might have observed, I didn't have time to write a simple solution, so I wrote three complicated ones first.
+
+The journey:
+- **Backtracking** - Recursive brute force. Works great when solutions exist, hangs spectacularly when proving impossibility. Eight orientations per piece × hundreds of positions × a hundred fifty pieces = heat death of the universe.
+- **Dancing Links (DLX)** - Knuth's exact cover algorithm with its elegant "dancing" linked lists. Twenty-four seconds for three small test cases. Correct but too slow.
+- **Z3 SAT Solver** - Industrial strength. Fast for solvable cases (under a second), but fifty-two seconds to prove one seven-piece case impossible. Also hangs during variable creation with 1.7 million booleans.
+- **Area Check** - If total cells needed exceeds cells available, it won't fit. Period. For this puzzle input, that's the whole answer. Four hundred eight bays pack, five hundred ninety-two don't.
+
+The hard lesson: implementing the sophisticated solvers was necessary to discover we didn't need them. Sometimes the universe rewards you for doing the work.
+
+[day12/puzzle121.py](day12/puzzle121.py) | [day12/strategies/](day12/strategies/)
+
+---
+
+## Setup
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management - the new hotness that makes `pip` feel like dial-up internet.
+
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
+git clone https://github.com/lstroud/aoc2025.git
+cd aoc2025
+uv sync
+
+# Run any day's puzzle
+uv run python day12/puzzle121.py
+```
+
+Key dependencies (all handled by `uv sync`):
+- **numpy/scipy/pandas** - The scientific Python stack
+- **rich** - Terminal formatting that makes output actually enjoyable
+- **z3-solver** - SMT solver for constraint problems
+- **dlx** - Dancing Links for exact cover
+- **shapely** - Computational geometry (because I couldn't resist trying without it first)
