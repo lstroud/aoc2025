@@ -154,9 +154,11 @@ The twist: This puzzle was absurdly easy compared to prior days.
 
 ### Day 12: Christmas Tree Farm - Present Packing
 
-The elves need to load oddly-shaped presents into bays under Christmas trees. Given polyomino shapes and bay assignments, figure out which bays can actually fit all their assigned presents.
+I didn't have time to write a simple solution, so I wrote three complicated ones first.
 
-Now, let me tell you something about NP-complete problems. Sometimes you spend five hours implementing backtracking, Dancing Links, and SAT solvers - only to discover that counting cells was the answer all along. As Mark Twain might have observed, I didn't have time to write a simple solution, so I wrote three complicated ones first.
+Sometimes you spend five hours implementing backtracking, Dancing Links, and SAT solvers - only to discover that the problem was much simpler. 
+
+The elves need to load oddly-shaped presents into bays under Christmas trees. Given polyomino shapes and bay assignments, figure out which bays can actually fit all their assigned presents.
 
 The journey:
 - **Backtracking** - Recursive brute force. Works great when solutions exist, hangs spectacularly when proving impossibility. Eight orientations per piece × hundreds of positions × a hundred fifty pieces = heat death of the universe.
@@ -193,3 +195,4 @@ Key dependencies (all handled by `uv sync`):
 - **z3-solver** - SMT solver for constraint problems
 - **dlx** - Dancing Links for exact cover
 - **shapely** - Computational geometry (because I couldn't resist trying without it first)
+

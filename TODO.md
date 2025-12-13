@@ -1,0 +1,2 @@
+- create some interesting visualizations of the solution?
+- can i implement some of the lower level algorithms?
